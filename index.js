@@ -142,6 +142,12 @@ async function run() {
         res.send(result);
       })
 
+      app.post('/allPost',verifyToken, async (req, res) =>{
+        const item = req.body;
+        const result = await allPostCollection.insertOne(item);
+        res.send(result)
+      })
+
       app.post('/announce',verifyToken,verifyAdmin, async (req, res) =>{
         const item = req.body;
         const result = await announceCollection.insertOne(item);
