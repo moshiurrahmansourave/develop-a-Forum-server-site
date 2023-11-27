@@ -142,6 +142,21 @@ async function run() {
         res.send(result);
       })
 
+      app.get('/myallPost/:email',async(req, res)=>{
+      
+        const userEmail = req.params.email
+        
+        const result = await allPostCollection.find({email:userEmail}).toArray()
+        res.send(result);
+      })
+
+      app.delete('/allPost/:id', async(req, res)=>{
+        const id = req.params.id;
+        const query = { _id: new ObjectId (id) };
+        const result = await allPostCollection.deleteOne(query);
+        res.send(result);
+      })
+
       app.post('/allPost',verifyToken, async (req, res) =>{
         const item = req.body;
         const result = await allPostCollection.insertOne(item);
@@ -159,11 +174,47 @@ async function run() {
         res.send(result);
       })
 
+      //like related para vi
+
+      app.post('/allPost/:id/like', async (req, res) => {
+        const postId = req.params.id;
+      
+        try {
+          // Update the likes in the MongoDB collection
+          const result = await allPostCollection.updateOne({ postId }, { $inc: { 
+            up_votes_count: 1 } }, { upsert: true });
+      
+          if (result.modifiedCount === 0 && result.upsertedCount === 0) {
+            console.log('Failed to update likes');
+            res.status(500).send('Failed to update likes');
+            return;
+          }
+      
+          console.log('Likes updated successfully');
+          res.status(200).send('Likes updated successfully');
+        } catch (err) {
+          console.error('Error updating likes:', err);
+          res.status(500).send('Error updating likes');
+        }
+      })
+
+      // admin stats 
+
       app.get('/allPostCount', async (req, res) =>{
         const count = await allPostCollection.estimatedDocumentCount()
         res.send({count})
       })
 
+      app.get('/admin-stats', async(req, res) =>{
+        const users = await userCollection.estimatedDocumentCount();
+        const totalPosts = await allPostCollection.estimatedDocumentCount();
+          
+        // this is not the best way
+        res.send({
+          users,
+          totalPosts
+        })
+      })
 
 
     // Send a ping to confirm a successful connection
