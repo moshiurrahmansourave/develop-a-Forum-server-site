@@ -176,27 +176,26 @@ async function run() {
 
       //like related para vi
 
-      app.post('/allPost/:id/like', async (req, res) => {
-        const postId = req.params.id;
-      
-        try {
-          // Update the likes in the MongoDB collection
-          const result = await allPostCollection.updateOne({ postId }, { $inc: { 
-            up_votes_count: 1 } }, { upsert: true });
-      
-          if (result.modifiedCount === 0 && result.upsertedCount === 0) {
-            console.log('Failed to update likes');
-            res.status(500).send('Failed to update likes');
-            return;
-          }
-      
-          console.log('Likes updated successfully');
-          res.status(200).send('Likes updated successfully');
-        } catch (err) {
-          console.error('Error updating likes:', err);
-          res.status(500).send('Error updating likes');
-        }
-      })
+      app.put("/UpVote/:id", async (req, res) => {
+        const id = req.params.id;
+        const updatedPost = await allPostCollection.findOneAndUpdate(
+          { _id: new ObjectId(id) },
+          { $inc: { up_votes_count: 1 } }
+          // { returnDocument: "after" }
+        );
+  
+        res.send(updatedPost.value);
+      });
+  
+      app.put("/downVote/:id", async (req, res) => {
+        const id = req.params.id;
+        const updatedPost = await allPostCollection.findOneAndUpdate(
+          { _id: new ObjectId(id) },
+          { $inc: { down_votes_count: 1 } }
+          // { returnDocument: "after" }
+        );
+        res.send(updatedPost.value);
+      });
 
       // admin stats 
 
