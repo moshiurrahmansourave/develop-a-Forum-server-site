@@ -77,6 +77,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/singleUser/:email', async(req, res)=>{
+      const email = req.params.email;
+      const query = {email:email}
+      const result = await userCollection.findOne(query);
+        res.send(result);
+    })
+
     app.get('/users/admin/:email', verifyToken, async(req, res) =>{
       const email = req.params.email;
       if(email !== req.decoded.email){
@@ -117,7 +124,22 @@ async function run() {
       res.send(result)
     })
 
-    app.delete('/users/:id',verifyToken, verifyAdmin, async(req, res)=>{
+    app.put("/user-badge/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log("my email", email);
+      const filter = { email: email };
+      const updateProduct = req.body;
+      const updateDoc = {
+        $set: {
+          badge: updateProduct.badge,
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete('/users/:id',verifyToken, verifyAdmin,  async(req, res)=>{
       const id = req.params.id
       const query = {_id: new ObjectId(id)}
       const result = await userCollection.deleteOne(query)
@@ -208,14 +230,14 @@ async function run() {
         res.send(result);
       });
   
-      app.post("/comment", async (req, res) => {
+      app.post("/comment",  async (req, res) => {
         const query = req.body;
         const result = await commentCollection.insertOne(query);
         res.send(result);
       });
   
   
-      app.get("/allPost-comments/:postId", async (req, res) => {
+      app.get("/allPost-comments/:postId",  async (req, res) => {
         const postId = req.params.postId;
   
         console.log("Requested Post ID:", postId);
@@ -266,12 +288,12 @@ async function run() {
 
       // admin stats 
 
-      app.get('/allPostCount', async (req, res) =>{
+      app.get('/allPostCount',  async (req, res) =>{
         const count = await allPostCollection.estimatedDocumentCount()
         res.send({count})
       })
 
-      app.get('/admin-stats', async(req, res) =>{
+      app.get('/admin-stats', verifyToken, verifyAdmin, async(req, res) =>{
         const users = await userCollection.estimatedDocumentCount();
         const totalPosts = await allPostCollection.estimatedDocumentCount();
         const totalComment = await commentCollection.estimatedDocumentCount();
@@ -287,7 +309,7 @@ async function run() {
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
