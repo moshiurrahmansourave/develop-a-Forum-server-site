@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken')
 require('dotenv').config()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5001
 
 // middleWere
@@ -30,6 +31,8 @@ async function run() {
     const allPostCollection = client.db("forumDb").collection("allPost");
     const userCollection = client.db("forumDb").collection("users");
     const announceCollection = client.db("forumDb").collection("announce");
+    const commentCollection = client.db("forumDb").collection("comment");
+    const paymentCollection = client.db("forumDb").collection("payments");
     //jwt related api
     app.post('/jwt', async (req, res)=>{
       const user = req.body;
@@ -197,6 +200,70 @@ async function run() {
         res.send(updatedPost.value);
       });
 
+      // comment related api vi
+
+      app.get("/comment", async (req, res) => {
+        const query = req.body;
+        const result = await commentCollection.find(query).toArray();
+        res.send(result);
+      });
+  
+      app.post("/comment", async (req, res) => {
+        const query = req.body;
+        const result = await commentCollection.insertOne(query);
+        res.send(result);
+      });
+  
+  
+      app.get("/allPost-comments/:postId", async (req, res) => {
+        const postId = req.params.postId;
+  
+        console.log("Requested Post ID:", postId);
+        if (!postId) return;
+        try {
+          const comments = await commentCollection.find({ postId }).toArray();
+  
+          res.send(comments);
+        } catch (error) {
+          console.error("Error retrieving comments:", error);
+          res.status(500).send({ error: "Internal Server Error" });
+        }
+      });
+
+
+       // payment intent
+    app.post('/create-payment-intent', async( req, res) =>{
+      const { price} = req.body;
+      const amount = parseInt( price * 100);
+      console.log(amount, 'amount inside the intent')
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+      res.send({ 
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    app.get('/payments/:email', verifyToken, async (req,res)=>{
+      const query = {email: req.params.email}
+      if(req.params.email !== req.decoded.email){
+        return res.status(403).send({message: 'forbidden access'})
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    })
+
+    app.post('/payments', async (req, res)=>{
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment)
+      console.log('payment info', payment)
+      res.send(paymentResult)
+    })
+
+
       // admin stats 
 
       app.get('/allPostCount', async (req, res) =>{
@@ -207,11 +274,13 @@ async function run() {
       app.get('/admin-stats', async(req, res) =>{
         const users = await userCollection.estimatedDocumentCount();
         const totalPosts = await allPostCollection.estimatedDocumentCount();
+        const totalComment = await commentCollection.estimatedDocumentCount();
           
         // this is not the best way
         res.send({
           users,
-          totalPosts
+          totalPosts,
+          totalComment
         })
       })
 
